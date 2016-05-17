@@ -22,5 +22,6 @@ private:
     QSqlDatabase dataBase;
     QFileSystemWatcher *watcher;
     QFile exchangeFile;
+    bool modifyBase;
 };
 #endif // READXML_H

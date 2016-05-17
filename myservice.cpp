@@ -24,7 +24,7 @@ void MyService::start()
 {
     try {
         QCoreApplication *app = application();
-        qDebug() << "Service started!1";
+        qDebug() << "Service started!";
         qDebug() << app->applicationDirPath();
 
         //My Class

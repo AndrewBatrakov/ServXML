@@ -1,17 +1,17 @@
 #ifndef NUMPREFIX_H
 #define NUMPREFIX_H
 
-#include <QWidget>
+#include <QtCore>
 
-class NumPrefix : public QWidget
+class NumPrefix : public QObject
 {
     Q_OBJECT
 public:
-    explicit NumPrefix(QWidget *parent = 0);
-
-signals:
+    NumPrefix();
 
 public slots:
+    QString getPrefix(QString tableName);
+
 };
 
 #endif // NUMPREFIX_H
