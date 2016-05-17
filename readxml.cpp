@@ -93,7 +93,7 @@ void ReadXML::updateBase()
         if(verifyFile.exists()){
             verifyFile.remove();
         }
-        fileOut.copy("d:/apache/QtProject/ServerEmployee/Change/CE_SQLite.arh");
+        compressFile.copy("d:/apache/QtProject/ServerEmployee/Change/CE_SQLite.arh");
     }
 }
 
@@ -140,11 +140,9 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                         personId = queryPer.value(0).toString();
                         QSqlQuery queryUPDATE;
                         queryUPDATE.prepare("UPDATE employee SET "
-                                            "fordelete = :fordelete, "
-                                            "employeenameupper = :employeenameupper "
+                                            "fordelete = :fordelete "
                                             "WHERE (employeeid = :personid);");
                         queryUPDATE.bindValue(":personid",personId);
-                        queryUPDATE.bindValue(":employeenameupper",upperName);
                         queryUPDATE.bindValue(":fordelete",1);
                         queryUPDATE.exec();
                         if(!queryUPDATE.isActive()){

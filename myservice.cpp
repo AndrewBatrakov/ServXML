@@ -5,7 +5,7 @@ MyService::MyService(int argc, char **argv) : QtService<QCoreApplication>(argc,a
 {
     try {
         setServiceDescription("Service XML to SQL");
-        setServiceFlags(QtServiceBase::CannotBeStopped);
+        setServiceFlags(QtServiceBase::CanBeSuspended);
     } catch (...) {
         qCritical() << "An unknown error in constructor";
     }
