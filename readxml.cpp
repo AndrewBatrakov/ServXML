@@ -58,12 +58,96 @@ void ReadXML::updateBase()
         }
         unCompressFile.close();
 
-        QSqlQuery queryD;
-        queryD.prepare("DELETE FROM employee WHERE fordelete = fd");
-        queryD.bindValue(":fd",0);
-        queryD.exec();
-        queryD.next();
-        //qDebug()<<queryD.next();
+        
+        
+        QSqlQuery queryS;
+        queryS.prepare("SELECT employeeid FROM employee WHERE fordelete = :fd");
+        queryS.bindValue(":fd",0);
+        queryS.exec();
+        QString employeeID;
+        QSqlQuery query;
+        while(queryS.next()){
+            employeeID = queryS.value(0).toString();
+            query.clear();
+
+            query.prepare("DELETE FROM contractdoc WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM driver WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM education WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM empcert WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM empcertdate WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM industrialsecurity WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM laborprotection WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM overal WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM personalinformation WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM physical WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM ptm WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM rodnie WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM siz WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM visota WHERE employeeid = :employeeid");
+            query.bindValue(":employeeid",employeeID);
+            query.exec();
+            query.clear();
+
+            query.prepare("DELETE FROM employee WHERE fordelete = :fd");
+            query.bindValue(":fd",0);
+            query.exec();
+            query.clear();
+        }
+
+        //QSqlQuery query;
+        query.exec("VACUUM");
 
         db.closeDataBase();
 
