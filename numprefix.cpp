@@ -10,8 +10,6 @@ NumPrefix::NumPrefix()
 
 QString NumPrefix::getPrefix(QString tableName)
 {
-    QString returnString;
-
     QString  prefName= "SRV";
 
     QSqlQuery query;
@@ -36,7 +34,6 @@ QString NumPrefix::getPrefix(QString tableName)
     int numNum = 1;
     while(query.next()){
         if(query.value(0).toString().right(9).toInt() > numNum){
-            qDebug()<<numNum;
             numberLast = numNum;
             intoBool = true;
             break;

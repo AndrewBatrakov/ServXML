@@ -15,7 +15,8 @@ public:
 
 private slots:
     void updateDir(QString dir);
-    void updateBase();
+    void updateBaseXML();
+    void baseToArhiv();
     void traverseAllInformation(const QDomNode &);
 
 private:

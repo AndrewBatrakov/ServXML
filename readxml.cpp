@@ -4,11 +4,14 @@
 
 ReadXML::ReadXML()
 {
+    DataBaseDirection db;
+    db.connectDataBase();
+
     QDir::setCurrent("d:/apache/QtProject/ServerEmployee/Change/");
     watcher = new QFileSystemWatcher;
     watcher->addPath("d:/apache/QtProject/ServerEmployee/Change/");
     connect(watcher,SIGNAL(directoryChanged(QString)),SLOT(updateDir(QString)));
-    connect(watcher,SIGNAL(fileChanged(QString)),SLOT(updateDir(QString)));
+    //connect(watcher,SIGNAL(fileChanged(QString)),SLOT(updateDir(QString)));
     modifyBase = false;
 }
 
@@ -24,14 +27,52 @@ void ReadXML::updateDir(QString dir)
             fileO.copy("d:/apache/QtProject/ServerEmployee/Base/ObmenAll.arh");
             fileO.remove();
             file.remove();
-            updateBase();
+            updateBaseXML();
             modifyBase = false;
+        }else{
+            modifyBase = true;
+            QDir dirExcange(dir);
+            QStringList listFiles = dirExcange.entryList(QDir::Files);
+            foreach(QString nameFileInDir, listFiles){
+                QFileInfo fileInfo;
+                fileInfo.setFile(nameFileInDir);
+                if(fileInfo.baseName().contains("_SRV")){
+                    QFile fileInDir(nameFileInDir);
+                    fileInDir.open(QIODevice::ReadOnly);
+                    //QByteArray byte = fileInDir.readAll();
+                    //fileInDir.close();
+                    //QByteArray unCompressText = qUncompress(byte);
+                    //QFile unCompressFile("ForSQL.txt");
+                    //unCompressFile.open(QIODevice::WriteOnly);
+                    //unCompressFile.write(unCompressText);
+                    //unCompressFile.close();
+
+
+                    //unCompressFile.open(QIODevice::ReadOnly);
+                    QTextStream in(&fileInDir);
+
+                    QString forQuery;
+                    QSqlQuery query;
+                    while(!in.atEnd()){
+                        forQuery = in.readLine();
+                        query.exec(forQuery);
+                        qDebug()<<query.lastError().text();
+                        query.clear();
+                    }
+                    fileInDir.remove();
+                }
+            }
         }
+        baseToArhiv();
+        modifyBase = false;
+
     }
 }
 
-void ReadXML::updateBase()
+void ReadXML::updateBaseXML()
 {
+
+
     modifyBase = true;
     QDir::setCurrent("d:/apache/QtProject/ServerEmployee/Base/");
     QFile file;
@@ -48,18 +89,16 @@ void ReadXML::updateBase()
         unCompressFile.open(QIODevice::ReadOnly);
         qDebug()<<unCompressFile.isOpen();
 
-        DataBaseDirection db;
-        db.connectDataBase();
-
         QDomDocument domDoc;
         if(domDoc.setContent(&unCompressFile)){
             QDomElement domElement = domDoc.documentElement();
             traverseAllInformation(domElement);
         }
         unCompressFile.close();
+        
+        file.remove();
+        unCompressFile.remove();
 
-        
-        
         QSqlQuery queryS;
         queryS.prepare("SELECT employeeid FROM employee WHERE fordelete = :fd");
         queryS.bindValue(":fd",0);
@@ -145,40 +184,40 @@ void ReadXML::updateBase()
             query.exec();
             query.clear();
         }
-
-        //QSqlQuery query;
         query.exec("VACUUM");
-
-        db.closeDataBase();
-
-        QFile fileOut;
-        fileOut.setFileName("CE_SQLite.dat");
-        fileOut.open(QIODevice::ReadOnly);
-        QByteArray byteArray = fileOut.readAll();
-        if(byteArray.isEmpty()){
-            qDebug() << fileOut.errorString();
-        }
-
-
-        QByteArray compressData = qCompress(byteArray);
-        QFile compressFile;
-        QFileInfo fileInfo;
-        fileInfo.setFile(fileOut.fileName());
-        QString fN = fileInfo.baseName();
-        fN += ".arh";
-        compressFile.setFileName(fN);
-        compressFile.open(QIODevice::WriteOnly);
-        compressFile.write(compressData);
-
-        fileOut.close();
-        compressFile.close();
-
-        QFile verifyFile("d:/apache/QtProject/ServerEmployee/Change/CE_SQLite.arh");
-        if(verifyFile.exists()){
-            verifyFile.remove();
-        }
-        compressFile.copy("d:/apache/QtProject/ServerEmployee/Change/CE_SQLite.arh");
     }
+}
+
+void ReadXML::baseToArhiv()
+{
+    QDir::setCurrent("d:/apache/QtProject/ServerEmployee/Base/");
+    QFile fileOut;
+    fileOut.setFileName("d:/apache/QtProject/ServerEmployee/Base/CE_SQLite.dat");
+    fileOut.open(QIODevice::ReadOnly);
+    QByteArray byteArray = fileOut.readAll();
+    if(byteArray.isEmpty()){
+        qDebug() << fileOut.errorString();
+    }
+
+
+    QByteArray compressData = qCompress(byteArray);
+    QFile compressFile;
+    QFileInfo fileInfo;
+    fileInfo.setFile(fileOut.fileName());
+    QString fN = fileInfo.baseName();
+    fN += ".arh";
+    compressFile.setFileName(fN);
+    compressFile.open(QIODevice::WriteOnly);
+    compressFile.write(compressData);
+
+    fileOut.close();
+    compressFile.close();
+
+//    QFile verifyFile("d:/apache/QtProject/ServerEmployee/Change/CE_SQLite.arh");
+//    if(verifyFile.exists()){
+//        verifyFile.remove();
+//    }
+//    compressFile.copy("d:/apache/QtProject/ServerEmployee/Change/CE_SQLite.arh");
 }
 
 void ReadXML::traverseAllInformation(const QDomNode &node)
@@ -212,14 +251,15 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
 
                     QSqlQuery queryPer;
                     queryPer.prepare("SELECT employeeid FROM employee "
-                                     "WHERE employeename = :personname AND "
-                                     "datebirthday = :datebirth;");
-                    queryPer.bindValue(":personname",personName);
-                    //queryPer.bindValue(":orgid",orgId);
-                    queryPer.bindValue(":datebirth",dateName);
+                                     "WHERE (employeename = :employeename AND "
+                                     "datebirthday = :datebirthday);");
+                    queryPer.bindValue(":employeename",personName);
+                    queryPer.bindValue(":datebirthday",dateName);
                     queryPer.exec();
                     queryPer.next();
-                    qDebug()<<queryPer.lastError().text();
+                    if(!queryPer.isActive())
+                        qDebug()<<queryPer.lastError().text();
+                    bool insertEmployee = true;
                     if(queryPer.isValid()){
                         personId = queryPer.value(0).toString();
                         QSqlQuery queryUPDATE;
@@ -237,13 +277,14 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                             qDebug()<<error;
                         }
                         //************************************
-                        //Need to add!!!
-                        //if(QDate::currentDate().dayOfWeek() == 7){
-                        //    allData = true;
-                        //}
+                        //Update all employees data
+                        insertEmployee = false;
+                        if(QDate::currentDate().dayOfWeek() == 3 || QDate::currentDate().dayOfWeek() == 7){
+                            allData = true;
+                        }
 
-                    }else{
-
+                    }
+                    if(insertEmployee == true || allData == true){
                         QString subName;
                         subName = domElement.attribute("Subdivision","").simplified();
                         QString postName;
@@ -560,19 +601,7 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                             }
                         }
 
-                        //************************************************************
 
-
-                        //                    QSqlQuery queryPer;
-                        //                    queryPer.prepare("SELECT employeeid FROM employee "
-                        //                                     "WHERE employeename = :personname AND "
-                        //                                     "datebirthday = :datebirth;");
-                        //                    queryPer.bindValue(":personname",personName);
-                        //                    queryPer.bindValue(":datebirth",dateName);
-                        //                    queryPer.exec();
-                        //                    queryPer.next();
-
-                        allData = true;
                         QSqlQuery queryINSERT;
                         NumPrefix numPrefix;
                         personId = numPrefix.getPrefix("employee");
@@ -596,6 +625,7 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                             ") VALUES("
                                             ":employeeid, "
                                             ":employeename, "
+                                            ":employeenameupper, "
                                             ":organizationid, "
                                             ":subdivisionid, "
                                             ":postid, "
@@ -636,6 +666,8 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                             error += queryINSERT.lastError().text();
                             error += "  Employee INSERT";
                             qDebug()<<error;
+                        }else{
+                            allData = true;
                         }
 
                         if(allData){
@@ -756,7 +788,6 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                 queryMed.exec();
                                 queryMed.next();
                                 if(!queryMed.isValid()){
-                                    //outC<<medosmotrNomerDocumenta<<medosmotrData<<personId<<endl;
                                     QSqlQuery query;
                                     NumPrefix numPrefix;
                                     QString idMed = numPrefix.getPrefix("physical");
@@ -818,8 +849,6 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                         }else{
                                             pbProgrammaid = queryI.value(0).toString();
                                         }
-                                    }else{
-                                        pbProgrammaid = "";
                                     }
                                     QSqlQuery query;
                                     NumPrefix numPrefix;
@@ -828,17 +857,17 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                                   "industrialsecurityid, "
                                                   "employeeid, "
                                                   "industrialsecuritydate, "
-                                                  "trainingprogrammid, "
+                                                  "pbprogrammaid, "
                                                   "industrialsecuritynumber, "
                                                   "obchasov"
                                                   ") VALUES("
-                                                  ":id, :empid, :datdir, :progid, :fit, :obch);");
-                                    query.bindValue(":id",idPB);
-                                    query.bindValue(":empid",personId);
-                                    query.bindValue(":datdir",pbData);
-                                    query.bindValue(":progid",pbProgrammaid);
-                                    query.bindValue(":fit",pbNomer);
-                                    query.bindValue(":obch",pbObChasov);
+                                                  ":industrialsecurityid, :employeeid, :industrialsecuritydate, :pbprogrammaid, :industrialsecuritynumber, :obchasov);");
+                                    query.bindValue(":industrialsecurityid",idPB);
+                                    query.bindValue(":employeeid",personId);
+                                    query.bindValue(":industrialsecuritydate",pbData);
+                                    query.bindValue(":pbprogrammaid",pbProgrammaid);
+                                    query.bindValue(":industrialsecuritynumber",pbNomer);
+                                    query.bindValue(":obchasov",pbObChasov);
                                     query.exec();
                                     if(!query.isActive()){
                                         qDebug()<<"Industrial security "<<query.lastError().text();
@@ -904,7 +933,7 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                             }
                             if(ptmPTMNumber != "" && ptmPTMDate != ""){
                                 QSqlQuery queryPTM;
-                                queryPTM.prepare("SELECT * FROM firesafety WHERE (employeeid  = :id AND firesafetynumber = :numfire "
+                                queryPTM.prepare("SELECT * FROM ptm WHERE (employeeid  = :id AND firesafetynumber = :numfire "
                                                  "AND firesafetydate = :datfire);");
                                 queryPTM.bindValue(":id",personId);
                                 queryPTM.bindValue(":datfire",ptmPTMDate);
@@ -912,7 +941,7 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                 queryPTM.exec();
                                 queryPTM.next();
                                 if(!queryPTM.isValid()){
-                                    QString firetrainingid;
+                                    QString ptmProgrammaid;
                                     if(ptmPTMProgramma != ""){
                                         QSqlQuery queryO;
                                         queryO.prepare("SELECT * FROM ptmprogramma WHERE ptmprogrammaname = :ptmprogrammaname");
@@ -923,48 +952,47 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                         if(!queryO.isValid()){
                                             QSqlQuery query;
                                             NumPrefix numPrefix;
-                                            firetrainingid = numPrefix.getPrefix("ptmprogramma");
+                                            ptmProgrammaid = numPrefix.getPrefix("ptmprogramma");
                                             query.prepare("INSERT INTO ptmprogramma ("
                                                           "ptmprogrammaid, "
                                                           "ptmprogrammaname"
                                                           ") VALUES(:ptmprogrammaid, :ptmprogrammaname);");
-                                            query.bindValue(":ptmprogrammaid",firetrainingid);
+                                            query.bindValue(":ptmprogrammaid",ptmProgrammaid);
                                             query.bindValue(":ptmprogrammaname",ptmPTMProgramma);
                                             query.exec();
                                         }else{
-                                            firetrainingid = queryO.value(0).toString();
+                                            ptmProgrammaid = queryO.value(0).toString();
                                         }
-                                    }else{
-                                        firetrainingid = "";
                                     }
                                     QSqlQuery query;
                                     NumPrefix numPrefix;
-                                    QString idFire = numPrefix.getPrefix("firesafety");
-                                    query.prepare("INSERT INTO firesafety ("
-                                                  "firesafetyid, "
+                                    QString idPTM = numPrefix.getPrefix("ptm");
+                                    query.prepare("INSERT INTO ptm ("
+                                                  "ptmid, "
                                                   "employeeid, "
-                                                  "firesafetydate, "
-                                                  "firesafetynumber, "
-                                                  "firesafetyhour, "
-                                                  "firesafetysostav, "
-                                                  "firesafetyudnumber, "
-                                                  "firesafetyuddate, "
-                                                  "firetrainingid"
+                                                  "ptmdate, "
+                                                  "ptmnumber, "
+                                                  "ptmhour, "
+                                                  "ptmsostav, "
+                                                  "ptmudnumber, "
+                                                  "ptmuddate, "
+                                                  "ptmprogrammaid"
                                                   ") VALUES("
-                                                  ":id, :empid, :datfire, :numfire, :hourfire, :sostav, "
-                                                  ":udnumber, :uddate, :firetrainingid);");
-                                    query.bindValue(":id",idFire);
-                                    query.bindValue(":empid",personId);
-                                    query.bindValue(":datfire",ptmPTMDate);
-                                    query.bindValue(":numfire",ptmPTMNumber);
-                                    query.bindValue(":hourfire",ptmPTMObChasov);
-                                    query.bindValue(":sostav",ptmPTMSostav);
-                                    query.bindValue(":udnumber",ptmNumber);
-                                    query.bindValue("firetrainingid",firetrainingid);
+                                                  ":ptmid, :employeeid, :ptmdate, :ptmnumber, :ptmhour, :ptmsostav, "
+                                                  ":ptmudnumber, :ptmuddate, :ptmprogrammaid);");
+                                    query.bindValue(":ptmid",idPTM);
+                                    query.bindValue(":employeeid",personId);
+                                    query.bindValue(":ptmdate",ptmData);
+                                    query.bindValue(":ptmnumber",ptmNumber);
+                                    query.bindValue(":ptmhour",ptmPTMObChasov);
+                                    query.bindValue(":ptmsostav",ptmPTMSostav);
+                                    query.bindValue(":ptmudnumber",ptmNumber);
+                                    query.bindValue(":ptmuddate",ptmPTMDate);
+                                    query.bindValue(":ptmprogrammaid",ptmProgrammaid);
                                     if(ptmData == ""){
                                         ptmData = "1900:01:01T00:00:00";
                                     }
-                                    query.bindValue(":uddate",ptmData);
+                                    query.bindValue(":ptmuddate",ptmPTMDate);
                                     query.exec();
                                     if(!query.isActive()){
                                         qDebug()<<"Ptm Error"<<query.lastError().text();
@@ -1108,18 +1136,10 @@ void ReadXML::traverseAllInformation(const QDomNode &node)
                                     QSqlQuery query;
                                     NumPrefix numPrefix;
                                     QString idVIS = numPrefix.getPrefix("visota");
-                                    query.prepare("INSERT INTO visota ("
-                                                  "visid, "
-                                                  "employeeid, "
-                                                  "visdate, "
-                                                  "visnumber, "
-                                                  "visobchasov, "
-                                                  "numberud, "
-                                                  "dateud"
+                                    query.prepare("INSERT INTO visota (visotaid, employeeid, visdate, visnumber, visobchasov, numberud, dateud"
                                                   ") VALUES("
-                                                  ":visid, :employeeid, :visdate, :visnumber, :visobchasov, :numberud, "
-                                                  ":dateud);");
-                                    query.bindValue(":visid",idVIS);
+                                                  ":visotaid, :employeeid, :visdate, :visnumber, :visobchasov, :numberud, :dateud);");
+                                    query.bindValue(":visotaid",idVIS);
                                     query.bindValue(":employeeid",personId);
                                     query.bindValue(":visdate",visData);
                                     query.bindValue(":visnumber",visNumber);
