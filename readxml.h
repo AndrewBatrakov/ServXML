@@ -18,6 +18,7 @@ private slots:
     void updateBaseXML();
     void baseToArhiv();
     void traverseAllInformation(const QDomNode &);
+    void readUpDateFile(QString);
 
 private:
     QSqlDatabase dataBase;

@@ -2,6 +2,7 @@ QT -=   qui
 QT +=   core\
         xml\
         sql\
+        network\
 
 CONFIG += c++11
 
